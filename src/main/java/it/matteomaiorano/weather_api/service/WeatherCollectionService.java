@@ -3,6 +3,8 @@ package it.matteomaiorano.weather_api.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import it.matteomaiorano.weather_api.client.OpenMeteoClient;
@@ -15,6 +17,10 @@ import it.matteomaiorano.weather_api.repository.WeatherMeasurementRepository;
 
 @Service
 public class WeatherCollectionService {
+    
+    private static final Logger logger = 
+        LoggerFactory.getLogger(WeatherCollectionService.class);
+    
     private final CityRepository cityRepository;
     private final WeatherMeasurementRepository weatherMeasurementRepository;
     private final OpenMeteoClient openMeteoClient;
@@ -54,10 +60,10 @@ public class WeatherCollectionService {
 
                 weatherMeasurementRepository.save(measurement);
             } catch (WeatherProviderException exception) {
-                System.err.println("Errore durante la raccolta dei dati meteo per la città: "
-                        + city.getName()
-                        + " : "
-                        + exception.getMessage());
+                logger.warn(
+                        "Errore durante la raccolta dei dati meteo per la città {}: {}",
+                        city.getName(),
+                        exception.getMessage());
             }
         }
     }
