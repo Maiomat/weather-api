@@ -19,5 +19,8 @@ spring:
       path: /h2-console
 
 weather:
- api:
-   base-url: "https://api.open-meteo.com"
+  api:
+    base-url: "https://api.open-meteo.com"
+
+  collection:
+    interval-ms: 900000 # 15 minutes
