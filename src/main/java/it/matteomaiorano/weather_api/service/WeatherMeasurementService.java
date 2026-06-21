@@ -14,65 +14,65 @@ import it.matteomaiorano.weather_api.repository.WeatherMeasurementRepository;
 @Service
 public class WeatherMeasurementService {
 
-    private final CityRepository cityRepository;
-    private final WeatherMeasurementRepository weatherMeasurementRepository;
+        private final CityRepository cityRepository;
+        private final WeatherMeasurementRepository weatherMeasurementRepository;
 
-    public WeatherMeasurementService(
-            CityRepository cityRepository,
-            WeatherMeasurementRepository weatherMeasurementRepository) {
+        public WeatherMeasurementService(
+                        CityRepository cityRepository,
+                        WeatherMeasurementRepository weatherMeasurementRepository) {
 
-        this.cityRepository = cityRepository;
-        this.weatherMeasurementRepository = weatherMeasurementRepository;
-    }
-
-    @Transactional
-    public boolean saveIfNew(
-            Long cityId,
-            OpenMeteoResponse.CurrentWeather currentWeather,
-            OpenMeteoResponse.CurrentWeatherUnits units) {
-
-        LocalDateTime measuredAt =
-                LocalDateTime.parse(currentWeather.time());
-
-        boolean alreadyExists =
-                weatherMeasurementRepository
-                        .existsByCity_IdAndMeasuredAt(
-                                cityId,
-                                measuredAt);
-
-        if (alreadyExists) {
-            return false;
+                this.cityRepository = cityRepository;
+                this.weatherMeasurementRepository = weatherMeasurementRepository;
         }
 
-        City city = cityRepository.findById(cityId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Città non trovata con id: " + cityId));
+        @Transactional
+        public boolean saveIfNew(
+                        Long cityId,
+                        OpenMeteoResponse.CurrentWeather currentWeather,
+                        OpenMeteoResponse.CurrentWeatherUnits units) {
 
-        WeatherMeasurement measurement = new WeatherMeasurement(
-                city,
-                measuredAt,
-                currentWeather.temperature(),
-                currentWeather.windSpeed(),
-                currentWeather.windDirection(),
-                currentWeather.weatherCode(),
-                currentWeather.isDay() == 1,
-                units.temperature(),
-                units.windSpeed(),
-                units.windDirection());
+                LocalDateTime measuredAt = LocalDateTime.parse(currentWeather.time());
 
-        /*
-         * Il flush forza subito l'esecuzione dell'INSERT,
-         * facendo emergere un eventuale conflitto sul vincolo univoco
-         * prima dell'aggiornamento delle medie.
-         */
-        weatherMeasurementRepository.saveAndFlush(measurement);
+                boolean alreadyExists = weatherMeasurementRepository
+                                .existsByCity_IdAndMeasuredAt(
+                                                cityId,
+                                                measuredAt);
 
-        city.updateWeatherAverages(
-                currentWeather.temperature(),
-                currentWeather.windSpeed());
+                if (alreadyExists) {
+                        return false;
+                }
 
-        cityRepository.save(city);
+                City city = cityRepository.findById(cityId)
+                                .orElseThrow(() -> new IllegalStateException(
+                                                "Città non trovata con id: " + cityId));
 
-        return true;
-    }
+                WeatherMeasurement measurement = new WeatherMeasurement(
+                                city,
+                                measuredAt,
+                                currentWeather.temperature(),
+                                currentWeather.windSpeed(),
+                                currentWeather.windDirection(),
+                                currentWeather.weatherCode(),
+                                currentWeather.isDay() == 1,
+                                units.temperature(),
+                                units.windSpeed(),
+                                units.windDirection());
+
+                /*
+                 * Il flush forza subito l'esecuzione dell'INSERT,
+                 * facendo emergere un eventuale conflitto sul vincolo univoco
+                 * prima dell'aggiornamento delle medie.
+                 */
+                weatherMeasurementRepository.saveAndFlush(measurement);
+
+                city.updateWeatherAverages(
+                                currentWeather.temperature(),
+                                currentWeather.windSpeed(),
+                                units.temperature(),
+                                units.windSpeed());
+
+                cityRepository.save(city);
+
+                return true;
+        }
 }

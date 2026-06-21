@@ -20,9 +20,12 @@ public class WeatherStatisticsController {
         this.weatherStatisticsService = weatherStatisticsService;
     }
 
-    @GetMapping("/{cityName}")
-    public WeatherAverageResponse getAvarageByCity(@PathVariable String cityName) {
-        return weatherStatisticsService.getAverageByCity(cityName);
+    @GetMapping("/{postalCode}")
+    public WeatherAverageResponse getAverageByPostalCode(
+            @PathVariable String postalCode) {
+
+        return weatherStatisticsService
+                .getAverageByPostalCode(postalCode);
     }
 
     @GetMapping

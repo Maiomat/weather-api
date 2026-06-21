@@ -30,8 +30,14 @@ public class City {
     @Column(name = "average_temperature", nullable = false)
     private Double averageTemperature = 0.0;
 
+    @Column(name = "temperature_unit", length = 10)
+    private String temperatureUnit;
+
     @Column(name = "average_wind_speed", nullable = false)
     private Double averageWindSpeed = 0.0;
+
+    @Column(name = "wind_speed_unit", length = 10)
+    private String windSpeedUnit;
 
     @Column(name = "measurements_count", nullable = false)
     private Long measurementsCount = 0L;
@@ -54,7 +60,9 @@ public class City {
 
     public void updateWeatherAverages(
             double temperature,
-            double windSpeed) {
+            double windSpeed,
+            String temperatureUnit,
+            String windSpeedUnit) {
 
         long newMeasurementsCount = measurementsCount + 1;
 
@@ -66,7 +74,17 @@ public class City {
                 + (windSpeed - averageWindSpeed)
                         / newMeasurementsCount;
 
+        this.temperatureUnit = temperatureUnit;
+        this.windSpeedUnit = windSpeedUnit;
         measurementsCount = newMeasurementsCount;
+    }
+
+    public String getTemperatureUnit() {
+        return temperatureUnit;
+    }
+
+    public String getWindSpeedUnit() {
+        return windSpeedUnit;
     }
 
     public Long getId() {
