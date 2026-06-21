@@ -18,20 +18,55 @@ public class City {
     @Column(nullable = false, unique = true, length = 100)
     private String name;
 
+    @Column(name = "postal_code", nullable = false, unique = true, length = 5)
+    private String postalCode;
+
     @Column(nullable = false)
     private Double latitude;
 
     @Column(nullable = false)
     private Double longitude;
 
+    @Column(name = "average_temperature", nullable = false)
+    private Double averageTemperature = 0.0;
+
+    @Column(name = "average_wind_speed", nullable = false)
+    private Double averageWindSpeed = 0.0;
+
+    @Column(name = "measurements_count", nullable = false)
+    private Long measurementsCount = 0L;
+
     protected City() {
         // Costruttore richiesto da JPA
     }
 
-    public City(String name, Double latitude, Double longitude) {
+    public City(
+            String name,
+            String postalCode,
+            Double latitude,
+            Double longitude) {
+
         this.name = name;
+        this.postalCode = postalCode;
         this.latitude = latitude;
         this.longitude = longitude;
+    }
+
+    public void updateWeatherAverages(
+            double temperature,
+            double windSpeed) {
+
+        long newMeasurementsCount = measurementsCount + 1;
+
+        averageTemperature = averageTemperature
+                + (temperature - averageTemperature)
+                        / newMeasurementsCount;
+
+        averageWindSpeed = averageWindSpeed
+                + (windSpeed - averageWindSpeed)
+                        / newMeasurementsCount;
+
+        measurementsCount = newMeasurementsCount;
     }
 
     public Long getId() {
@@ -42,6 +77,10 @@ public class City {
         return name;
     }
 
+    public String getPostalCode() {
+        return postalCode;
+    }
+
     public Double getLatitude() {
         return latitude;
     }
@@ -50,8 +89,24 @@ public class City {
         return longitude;
     }
 
+    public Double getAverageTemperature() {
+        return averageTemperature;
+    }
+
+    public Double getAverageWindSpeed() {
+        return averageWindSpeed;
+    }
+
+    public Long getMeasurementsCount() {
+        return measurementsCount;
+    }
+
     public void setName(String name) {
         this.name = name;
+    }
+
+    public void setPostalCode(String postalCode) {
+        this.postalCode = postalCode;
     }
 
     public void setLatitude(Double latitude) {
