@@ -1,18 +1,14 @@
 package it.matteomaiorano.weather_api.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -22,188 +18,138 @@ import it.matteomaiorano.weather_api.client.dto.OpenMeteoResponse;
 import it.matteomaiorano.weather_api.client.dto.OpenMeteoResponse.CurrentWeather;
 import it.matteomaiorano.weather_api.client.dto.OpenMeteoResponse.CurrentWeatherUnits;
 import it.matteomaiorano.weather_api.entity.City;
-import it.matteomaiorano.weather_api.entity.WeatherMeasurement;
 import it.matteomaiorano.weather_api.exception.WeatherProviderException;
 import it.matteomaiorano.weather_api.repository.CityRepository;
-import it.matteomaiorano.weather_api.repository.WeatherMeasurementRepository;
 
 @ExtendWith(MockitoExtension.class)
 class WeatherCollectionServiceTest {
 
-        @Mock
-        private CityRepository cityRepository;
+    @Mock
+    private CityRepository cityRepository;
 
-        @Mock
-        private WeatherMeasurementRepository weatherMeasurementRepository;
+    @Mock
+    private OpenMeteoClient openMeteoClient;
 
-        @Mock
-        private OpenMeteoClient openMeteoClient;
+    @Mock
+    private WeatherMeasurementService weatherMeasurementService;
 
-        @InjectMocks
-        private WeatherCollectionService weatherCollectionService;
+    @InjectMocks
+    private WeatherCollectionService weatherCollectionService;
 
-        @Test
-        void shouldCollectAndSaveWeatherData() {
-                City city = new City("Firenze", "50121", 43.7696, 11.2558);
+    @Test
+    void shouldCollectAndDelegateWeatherDataSaving() {
+        City city = mock(City.class);
 
-                OpenMeteoResponse response = mock(OpenMeteoResponse.class);
+        OpenMeteoResponse response =
+                mock(OpenMeteoResponse.class);
 
-                CurrentWeather currentWeather = mock(CurrentWeather.class);
+        CurrentWeather currentWeather =
+                mock(CurrentWeather.class);
 
-                CurrentWeatherUnits units = mock(CurrentWeatherUnits.class);
+        CurrentWeatherUnits units =
+                mock(CurrentWeatherUnits.class);
 
-                when(cityRepository.findAll())
-                                .thenReturn(List.of(city));
+        when(city.getId()).thenReturn(1L);
+        when(city.getLatitude()).thenReturn(43.7696);
+        when(city.getLongitude()).thenReturn(11.2558);
 
-                when(openMeteoClient.getCurrentWeather(
-                                city.getLatitude(),
-                                city.getLongitude()))
-                                .thenReturn(response);
+        when(cityRepository.findAll())
+                .thenReturn(List.of(city));
 
-                when(response.currentWeather())
-                                .thenReturn(currentWeather);
+        when(openMeteoClient.getCurrentWeather(
+                city.getLatitude(),
+                city.getLongitude()))
+                .thenReturn(response);
 
-                when(response.currentWeatherUnits())
-                                .thenReturn(units);
+        when(response.currentWeather())
+                .thenReturn(currentWeather);
 
-                when(currentWeather.time())
-                                .thenReturn("2026-06-19T10:00");
+        when(response.currentWeatherUnits())
+                .thenReturn(units);
 
-                when(currentWeather.temperature())
-                                .thenReturn(24.5);
+        when(weatherMeasurementService.saveIfNew(
+                1L,
+                currentWeather,
+                units))
+                .thenReturn(true);
 
-                when(currentWeather.windSpeed())
-                                .thenReturn(12.3);
+        weatherCollectionService.collectWeatherData();
 
-                when(currentWeather.windDirection())
-                                .thenReturn(180);
+        verify(cityRepository).findAll();
 
-                when(currentWeather.weatherCode())
-                                .thenReturn(1);
+        verify(openMeteoClient).getCurrentWeather(
+                city.getLatitude(),
+                city.getLongitude());
 
-                when(units.temperature())
-                                .thenReturn("°C");
+        verify(weatherMeasurementService).saveIfNew(
+                1L,
+                currentWeather,
+                units);
+    }
 
-                when(units.windSpeed())
-                                .thenReturn("km/h");
+    @Test
+    void shouldContinueCollectionWhenOneCityFails() {
+        City firenze = mock(City.class);
+        City roma = mock(City.class);
 
-                when(units.windDirection())
-                                .thenReturn("°");
+        OpenMeteoResponse response =
+                mock(OpenMeteoResponse.class);
 
-                weatherCollectionService.collectWeatherData();
+        CurrentWeather currentWeather =
+                mock(CurrentWeather.class);
 
-                ArgumentCaptor<WeatherMeasurement> captor = ArgumentCaptor.forClass(WeatherMeasurement.class);
+        CurrentWeatherUnits units =
+                mock(CurrentWeatherUnits.class);
 
-                verify(weatherMeasurementRepository)
-                                .save(captor.capture());
+        when(firenze.getName()).thenReturn("Firenze");
+        when(firenze.getLatitude()).thenReturn(43.7696);
+        when(firenze.getLongitude()).thenReturn(11.2558);
 
-                WeatherMeasurement savedMeasurement = captor.getValue();
+        when(roma.getId()).thenReturn(2L);
+        when(roma.getLatitude()).thenReturn(41.9028);
+        when(roma.getLongitude()).thenReturn(12.4964);
 
-                assertSame(city, savedMeasurement.getCity());
+        when(cityRepository.findAll())
+                .thenReturn(List.of(firenze, roma));
 
-                assertEquals(
-                                LocalDateTime.of(2026, 6, 19, 10, 0),
-                                savedMeasurement.getMeasuredAt());
+        when(openMeteoClient.getCurrentWeather(
+                firenze.getLatitude(),
+                firenze.getLongitude()))
+                .thenThrow(new WeatherProviderException(
+                        "Open-Meteo non disponibile"));
 
-                assertEquals(
-                                24.5,
-                                savedMeasurement.getTemperature());
+        when(openMeteoClient.getCurrentWeather(
+                roma.getLatitude(),
+                roma.getLongitude()))
+                .thenReturn(response);
 
-                assertEquals(
-                                12.3,
-                                savedMeasurement.getWindSpeed());
+        when(response.currentWeather())
+                .thenReturn(currentWeather);
 
-                assertEquals(
-                                180,
-                                savedMeasurement.getWindDirection());
+        when(response.currentWeatherUnits())
+                .thenReturn(units);
 
-                assertEquals(
-                                1,
-                                savedMeasurement.getWeatherCode());
+        when(weatherMeasurementService.saveIfNew(
+                2L,
+                currentWeather,
+                units))
+                .thenReturn(true);
 
-                assertEquals(
-                                "°C",
-                                savedMeasurement.getTemperatureUnit());
+        weatherCollectionService.collectWeatherData();
 
-                assertEquals(
-                                "km/h",
-                                savedMeasurement.getWindSpeedUnit());
+        verify(openMeteoClient).getCurrentWeather(
+                firenze.getLatitude(),
+                firenze.getLongitude());
 
-                assertEquals(
-                                "°",
-                                savedMeasurement.getWindDirectionUnit());
+        verify(openMeteoClient).getCurrentWeather(
+                roma.getLatitude(),
+                roma.getLongitude());
 
-                verify(openMeteoClient).getCurrentWeather(
-                                city.getLatitude(),
-                                city.getLongitude());
-        }
+        verify(weatherMeasurementService).saveIfNew(
+                2L,
+                currentWeather,
+                units);
 
-        @Test
-        void shouldContinueCollectionWhenOneCityFails() {
-                City firenze = new City("Firenze", "50121", 43.7696, 11.2558);
-
-                City roma = new City("Roma", "00184", 41.9028, 12.4964);
-
-                OpenMeteoResponse response = mock(OpenMeteoResponse.class);
-                CurrentWeather currentWeather = mock(CurrentWeather.class);
-                CurrentWeatherUnits units = mock(CurrentWeatherUnits.class);
-
-                when(cityRepository.findAll())
-                                .thenReturn(List.of(firenze, roma));
-
-                when(openMeteoClient.getCurrentWeather(
-                                firenze.getLatitude(),
-                                firenze.getLongitude()))
-                                .thenThrow(new WeatherProviderException(
-                                                "Open-Meteo non disponibile"));
-
-                when(openMeteoClient.getCurrentWeather(
-                                roma.getLatitude(),
-                                roma.getLongitude()))
-                                .thenReturn(response);
-
-                when(response.currentWeather())
-                                .thenReturn(currentWeather);
-
-                when(response.currentWeatherUnits())
-                                .thenReturn(units);
-
-                when(currentWeather.time())
-                                .thenReturn("2026-06-19T10:00");
-
-                when(currentWeather.temperature())
-                                .thenReturn(25.0);
-
-                when(currentWeather.windSpeed())
-                                .thenReturn(10.0);
-
-                when(currentWeather.windDirection())
-                                .thenReturn(90);
-
-                when(currentWeather.weatherCode())
-                                .thenReturn(1);
-
-                when(units.temperature())
-                                .thenReturn("°C");
-
-                when(units.windSpeed())
-                                .thenReturn("km/h");
-
-                when(units.windDirection())
-                                .thenReturn("°");
-
-                weatherCollectionService.collectWeatherData();
-
-                verify(openMeteoClient).getCurrentWeather(
-                                firenze.getLatitude(),
-                                firenze.getLongitude());
-
-                verify(openMeteoClient).getCurrentWeather(
-                                roma.getLatitude(),
-                                roma.getLongitude());
-
-                verify(weatherMeasurementRepository, times(1))
-                                .save(org.mockito.ArgumentMatchers.any(
-                                                WeatherMeasurement.class));
-        }
+        verifyNoMoreInteractions(weatherMeasurementService);
+    }
 }

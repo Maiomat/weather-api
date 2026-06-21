@@ -11,9 +11,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "weather_measurements")
+@Table(name = "weather_measurements", uniqueConstraints = @UniqueConstraint(name = "uk_weather_measurement_city_time", columnNames = {
+        "city_id", "measured_at" }))
 public class WeatherMeasurement {
 
     @Id
