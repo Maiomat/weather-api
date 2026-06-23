@@ -3,7 +3,6 @@ package it.matteomaiorano.weather_api.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,106 +17,94 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import it.matteomaiorano.weather_api.dto.CityResponse;
 import it.matteomaiorano.weather_api.dto.CreateCityRequest;
 import it.matteomaiorano.weather_api.entity.City;
-import it.matteomaiorano.weather_api.exception.CityNameAlreadyExistsException;
 import it.matteomaiorano.weather_api.exception.PostalCodeAlreadyExistsException;
 import it.matteomaiorano.weather_api.repository.CityRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CityServiceTest {
 
-    @Mock
-    private CityRepository cityRepository;
+        @Mock
+        private CityRepository cityRepository;
 
-    @InjectMocks
-    private CityService cityService;
+        @InjectMocks
+        private CityService cityService;
 
-    @Test
-    void shouldCreateCityWhenNameAndPostalCodeAreUnique() {
-        CreateCityRequest request = new CreateCityRequest(
-                " Salerno ",
-                " 84121 ",
-                40.6824,
-                14.7681);
+        @Test
+        void shouldCreateCityWhenNameAndPostalCodeAreUnique() {
+                CreateCityRequest request = new CreateCityRequest(
+                                " Salerno ",
+                                " 84121 ",
+                                40.6824,
+                                14.7681);
 
-        when(cityRepository.existsByNameIgnoreCase("Salerno"))
-                .thenReturn(false);
+                when(cityRepository.existsByPostalCode("84121"))
+                                .thenReturn(false);
 
-        when(cityRepository.existsByPostalCode("84121"))
-                .thenReturn(false);
+                when(cityRepository.save(any(City.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(cityRepository.save(any(City.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
+                CityResponse response = cityService.createCity(request);
 
-        CityResponse response = cityService.createCity(request);
+                assertEquals("Salerno", response.name());
+                assertEquals("84121", response.postalCode());
+                assertEquals(40.6824, response.latitude());
+                assertEquals(14.7681, response.longitude());
+                assertEquals(0.0, response.averageTemperature());
+                assertEquals(0.0, response.averageWindSpeed());
+                assertEquals(0L, response.measurementsCount());
 
-        assertEquals("Salerno", response.name());
-        assertEquals("84121", response.postalCode());
-        assertEquals(40.6824, response.latitude());
-        assertEquals(14.7681, response.longitude());
-        assertEquals(0.0, response.averageTemperature());
-        assertEquals(0.0, response.averageWindSpeed());
-        assertEquals(0L, response.measurementsCount());
+                ArgumentCaptor<City> captor = ArgumentCaptor.forClass(City.class);
 
-        ArgumentCaptor<City> captor = ArgumentCaptor.forClass(City.class);
+                verify(cityRepository).save(captor.capture());
 
-        verify(cityRepository).save(captor.capture());
+                City savedCity = captor.getValue();
 
-        City savedCity = captor.getValue();
+                assertEquals("Salerno", savedCity.getName());
+                assertEquals("84121", savedCity.getPostalCode());
+        }
 
-        assertEquals("Salerno", savedCity.getName());
-        assertEquals("84121", savedCity.getPostalCode());
-    }
+        @Test
+        void shouldThrowExceptionWhenPostalCodeAlreadyExists() {
+                CreateCityRequest request = new CreateCityRequest(
+                                "Salerno",
+                                "84121",
+                                40.6824,
+                                14.7681);
 
-    @Test
-    void shouldThrowExceptionWhenCityNameAlreadyExists() {
-        CreateCityRequest request = new CreateCityRequest(
-                "Salerno",
-                "84121",
-                40.6824,
-                14.7681);
+                when(cityRepository.existsByPostalCode("84121"))
+                                .thenReturn(true);
 
-        when(cityRepository.existsByNameIgnoreCase("Salerno"))
-                .thenReturn(true);
+                assertThrows(
+                                PostalCodeAlreadyExistsException.class,
+                                () -> cityService.createCity(request));
 
-        assertThrows(
-                CityNameAlreadyExistsException.class,
-                () -> cityService.createCity(request));
+                verify(cityRepository)
+                                .existsByPostalCode("84121");
 
-        verify(cityRepository)
-                .existsByNameIgnoreCase("Salerno");
+                verify(cityRepository, never())
+                                .save(any(City.class));
+        }
 
-        verify(cityRepository, never())
-                .existsByPostalCode(anyString());
+        @Test
+        void shouldAllowSameCityNameWithDifferentPostalCode() {
+                CreateCityRequest request = new CreateCityRequest(
+                                "Firenze",
+                                "50122",
+                                43.7696,
+                                11.2558);
 
-        verify(cityRepository, never())
-                .save(any(City.class));
-    }
+                when(cityRepository.existsByPostalCode("50122"))
+                                .thenReturn(false);
 
-    @Test
-    void shouldThrowExceptionWhenPostalCodeAlreadyExists() {
-        CreateCityRequest request = new CreateCityRequest(
-                "Salerno",
-                "84121",
-                40.6824,
-                14.7681);
+                when(cityRepository.save(any(City.class)))
+                                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(cityRepository.existsByNameIgnoreCase("Salerno"))
-                .thenReturn(false);
+                CityResponse response = cityService.createCity(request);
 
-        when(cityRepository.existsByPostalCode("84121"))
-                .thenReturn(true);
+                assertEquals("Firenze", response.name());
+                assertEquals("50122", response.postalCode());
 
-        assertThrows(
-                PostalCodeAlreadyExistsException.class,
-                () -> cityService.createCity(request));
-
-        verify(cityRepository)
-                .existsByNameIgnoreCase("Salerno");
-
-        verify(cityRepository)
-                .existsByPostalCode("84121");
-
-        verify(cityRepository, never())
-                .save(any(City.class));
-    }
+                verify(cityRepository).existsByPostalCode("50122");
+                verify(cityRepository).save(any(City.class));
+        }
 }

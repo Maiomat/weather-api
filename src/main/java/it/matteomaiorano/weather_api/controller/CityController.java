@@ -30,12 +30,12 @@ public class CityController {
     @PostMapping
     @Operation(summary = "Inserisce una nuova città", description = """
             Registra una città utilizzando nome, CAP e coordinate.
-            Il nome e il CAP devono essere univoci.
+            Il CAP deve essere univoco.
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Città creata correttamente"),
             @ApiResponse(responseCode = "400", description = "Dati della richiesta non validi"),
-            @ApiResponse(responseCode = "409", description = "Nome o CAP già presente")
+            @ApiResponse(responseCode = "409", description = "CAP già presente")
     })
     public ResponseEntity<CityResponse> createCity(
             @Valid @RequestBody CreateCityRequest request) {

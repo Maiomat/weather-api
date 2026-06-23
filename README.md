@@ -22,8 +22,8 @@ La documentazione delle API è disponibile tramite OpenAPI e Swagger UI.
   * Napoli
   * Torino
 * Inserimento dinamico di nuove città.
-* Identificazione funzionale delle città tramite CAP.
-* Controllo di unicità sul nome della città e sul CAP.
+* Identificazione univoca delle località tramite CAP.
+* Possibilità di gestire località con lo stesso nome ma CAP differenti.
 * Validazione dei dati ricevuti dalle API.
 * Raccolta automatica tramite scheduler ogni 15 minuti.
 * Raccolta manuale eseguita in background.
@@ -87,7 +87,7 @@ I service contengono la logica applicativa.
 
 In particolare:
 
-* `CityService` gestisce l'inserimento e i controlli sui duplicati delle città;
+* `CityService` gestisce l'inserimento delle città e verifica l'unicità del CAP;
 * `WeatherCollectionService` coordina le chiamate a Open-Meteo per tutte le città;
 * `WeatherMeasurementService` salva le nuove rilevazioni e aggiorna le medie;
 * `WeatherStatisticsService` restituisce le statistiche precalcolate;
@@ -130,11 +130,15 @@ L'entità `City` contiene:
 * unità di misura;
 * numero di rilevazioni utilizzate.
 
-Il nome e il CAP sono univoci.
+Nel modello applicativo, il CAP è l'identificatore funzionale univoco di ciascuna località monitorata.
+
+Il nome è un attributo descrittivo e può essere condiviso da più località con CAP differenti.
+
+L'entità mantiene comunque un identificativo numerico interno, utilizzato da JPA e dalle relazioni con le rilevazioni meteorologiche.
 
 Il CAP viene rappresentato come stringa per preservare eventuali zeri iniziali.
 
-Nel modello semplificato del progetto viene associato un CAP rappresentativo a ogni città. Nella realtà, alcune grandi città possono avere più CAP.
+Nel modello semplificato del progetto viene associato un CAP rappresentativo a ogni località. Nella realtà, il rapporto tra comuni, località e CAP può essere più complesso.
 
 ### WeatherMeasurement
 
@@ -369,7 +373,9 @@ Esempio di risposta:
 Possibili errori:
 
 * `400 Bad Request` se i dati non sono validi;
-* `409 Conflict` se il nome o il CAP sono già presenti.
+* `409 Conflict` se il CAP è già presente.
+
+È possibile registrare più località con lo stesso nome, purché abbiano CAP differenti.
 
 ---
 
@@ -524,20 +530,6 @@ Esempio di risposta:
 }
 ```
 
-### Nome città duplicato
-
-```text
-HTTP 409 Conflict
-```
-
-```json
-{
-  "detail": "Esiste già una città con nome: Salerno",
-  "status": 409,
-  "title": "City name already exists"
-}
-```
-
 ### CAP duplicato
 
 ```text
@@ -592,7 +584,7 @@ I test verificano principalmente:
 
 * la creazione di una città valida;
 * la normalizzazione di nome e CAP;
-* il rifiuto di nomi duplicati;
+* l'accettazione di città con lo stesso nome e CAP differenti;
 * il rifiuto di CAP duplicati;
 * la lettura delle medie precalcolate tramite CAP;
 * la gestione di un CAP inesistente;
@@ -606,9 +598,9 @@ I test verificano principalmente:
 * il rifiuto di una seconda raccolta concorrente;
 * il corretto caricamento del contesto Spring.
 
-I repository, il client Open-Meteo e gli executor vengono simulati tramite Mockito.
+La maggior parte dei test è costituita da test unitari, nei quali repository, client Open-Meteo ed executor vengono simulati tramite Mockito. Questi test non dipendono dal database o dalla rete.
 
-In questo modo i test unitari non dipendono dal database, dalla rete o dall'avvio completo dell'applicazione.
+È inoltre presente un test dedicato al corretto caricamento del contesto Spring.
 
 ## Scelte progettuali
 
@@ -637,10 +629,9 @@ L'inserimento di una città utilizza Bean Validation per controllare:
 
 I duplicati vengono prevenuti sia a livello applicativo sia tramite vincoli del database.
 
-Per le città vengono controllati:
+Per le città viene controllata l'unicità del CAP.
 
-* nome;
-* CAP.
+Il controllo viene eseguito sia a livello applicativo sia tramite un vincolo univoco nel database. Il nome della città non è univoco e può essere ripetuto per località con CAP differenti.
 
 Per le rilevazioni viene controllata la combinazione:
 
@@ -654,7 +645,7 @@ Il controllo applicativo permette di gestire il caso normalmente, mentre il vinc
 
 Il timestamp utilizzato per identificare una rilevazione è quello restituito da Open-Meteo, non l'istante preciso in cui il client esegue la richiesta.
 
-Open-Meteo aggiorna i dati correnti a intervalli di circa 15 minuti. Più richieste eseguite nello stesso intervallo possono quindi restituire lo stesso timestamp.
+Durante i test è stato osservato che richieste ravvicinate possono restituire lo stesso timestamp. Per questo motivo la combinazione tra città e timestamp viene utilizzata per impedire il salvataggio ripetuto della stessa rilevazione.
 
 ### Medie precalcolate
 
@@ -719,8 +710,8 @@ In un ambiente distribuito, l'`AtomicBoolean` utilizzato dal coordinatore proteg
 
 Con più repliche sarebbe necessario utilizzare un meccanismo condiviso, come:
 
-* un lock distribuito;
-* un database condiviso;
+* un lock distribuito basato su database o Redis;
+* uno stato persistente dei job di raccolta;
 * un sistema di messaggistica;
 * uno scheduler distribuito.
 
@@ -736,7 +727,7 @@ Tra gli ulteriori sviluppi futuri:
 * paginazione e consultazione dello storico;
 * endpoint per modificare o eliminare una città;
 * geocoding automatico a partire dal CAP;
-* gestione più completa delle città con più CAP;
+* modellazione più completa del rapporto tra comuni, località e CAP;
 * autenticazione e autorizzazione delle API;
 * metriche e monitoraggio;
 * pipeline CI/CD;

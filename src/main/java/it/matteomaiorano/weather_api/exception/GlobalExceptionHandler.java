@@ -38,19 +38,6 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(CityNameAlreadyExistsException.class)
-    public ProblemDetail handleCityNameAlreadyExists(
-            CityNameAlreadyExistsException exception) {
-
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.CONFLICT,
-                exception.getMessage());
-
-        problem.setTitle("City name already exists");
-
-        return problem;
-    }
-
     @ExceptionHandler(PostalCodeAlreadyExistsException.class)
     public ProblemDetail handlePostalCodeAlreadyExists(
             PostalCodeAlreadyExistsException exception) {
