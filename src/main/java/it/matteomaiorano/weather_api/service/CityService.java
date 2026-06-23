@@ -6,7 +6,6 @@ import org.springframework.transaction.annotation.Transactional;
 import it.matteomaiorano.weather_api.dto.CityResponse;
 import it.matteomaiorano.weather_api.dto.CreateCityRequest;
 import it.matteomaiorano.weather_api.entity.City;
-import it.matteomaiorano.weather_api.exception.CityNameAlreadyExistsException;
 import it.matteomaiorano.weather_api.exception.PostalCodeAlreadyExistsException;
 import it.matteomaiorano.weather_api.repository.CityRepository;
 
@@ -23,10 +22,6 @@ public class CityService {
     public CityResponse createCity(CreateCityRequest request) {
         String normalizedName = request.name().trim();
         String normalizedPostalCode = request.postalCode().trim();
-
-        if (cityRepository.existsByNameIgnoreCase(normalizedName)) {
-            throw new CityNameAlreadyExistsException(normalizedName);
-        }
 
         if (cityRepository.existsByPostalCode(normalizedPostalCode)) {
             throw new PostalCodeAlreadyExistsException(
